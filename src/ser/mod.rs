@@ -109,6 +109,8 @@ pub struct PrettyConfig {
     pub compact_maps: bool,
     /// Enable explicit number type suffixes like `1u16`
     pub number_suffixes: bool,
+    /// Whether to serialize f32 and f62 with a set precision.
+    pub floating_point_precision: Option<usize>,
 }
 
 impl PrettyConfig {
@@ -337,6 +339,25 @@ impl PrettyConfig {
 
         self
     }
+    /// Configures whether floats should be serialized with a set precision.
+    ///
+    /// When `1`, `1.2345678` will serialize to
+    /// ```
+    /// 1.1
+    /// # ;
+    /// ```
+    /// When `5`, `1.2345678` will instead serialize to
+    /// ```
+    /// 1.23457
+    /// # ;
+    /// ```
+    ///
+    /// Default: `true`
+    pub fn floating_point_precision(mut self, floating_point_precision: Option<usize>) -> Self {
+        self.floating_point_precision = floating_point_precision;
+
+        self
+    }
 }
 
 impl Default for PrettyConfig {
@@ -359,6 +380,7 @@ impl Default for PrettyConfig {
             compact_structs: false,
             compact_maps: false,
             number_suffixes: false,
+            floating_point_precision: None,
         }
     }
 }
@@ -473,6 +495,12 @@ impl<W: fmt::Write> Serializer<W> {
         self.pretty
             .as_ref()
             .map_or(true, |(ref config, _)| config.escape_strings)
+    }
+
+    fn floating_point_precision(&self) -> Option<usize> {
+        self.pretty
+            .as_ref()
+            .map_or(None, |&(ref config, _)| config.floating_point_precision)
     }
 
     fn start_indent(&mut self) -> Result<()> {
@@ -724,6 +752,10 @@ impl<'a, W: fmt::Write> ser::Serializer for &'a mut Serializer<W> {
             write!(self.output, "-")?;
         }
 
+        if let Some(floating_point_precision) = self.floating_point_precision() {
+            write!(self.output, "{:.*}", floating_point_precision, v)?;
+            return Ok(());
+        }
         write!(self.output, "{}", v)?;
 
         if v.fract() == 0.0 {
@@ -742,6 +774,10 @@ impl<'a, W: fmt::Write> ser::Serializer for &'a mut Serializer<W> {
             write!(self.output, "-")?;
         }
 
+        if let Some(floating_point_precision) = self.floating_point_precision() {
+            write!(self.output, "{:.*}", floating_point_precision, v)?;
+            return Ok(());
+        }
         write!(self.output, "{}", v)?;
 
         if v.fract() == 0.0 {

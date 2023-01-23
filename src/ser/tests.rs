@@ -1,6 +1,9 @@
 use serde_derive::Serialize;
 
 use crate::Number;
+use crate::ser::to_string_pretty;
+
+use super::to_string;
 
 #[derive(Serialize)]
 struct EmptyStruct1;
@@ -303,4 +306,27 @@ fn check_to_string_writer<T: ?Sized + serde::Serialize>(val: &T, check: &str, ch
     )
     .unwrap();
     assert_eq!(ron_writer_pretty, check_pretty);
+}
+
+#[test]
+fn test_floating_point_precision() {
+    let f32 = 1.23456789_f32;
+    let f64 = 1.23456789_f64;
+
+    assert_eq!(
+        to_string_pretty(
+            &f32,
+            crate::ser::PrettyConfig::new().floating_point_precision(Some(3))
+        )
+        .unwrap(),
+        "1.235"
+    );
+    assert_eq!(
+        to_string_pretty(
+            &f64,
+            crate::ser::PrettyConfig::new().floating_point_precision(Some(3))
+        )
+        .unwrap(),
+        "1.235"
+    );
 }
